@@ -6,7 +6,7 @@ import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const userId = req.user?.userId;
     const page = parseInt(req.query.page as string) || 1;
@@ -108,7 +108,7 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.userId;

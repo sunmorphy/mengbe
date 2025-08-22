@@ -77,7 +77,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Get current user profile
-router.get('/profile', authenticateToken, async (req, res) => {
+router.get('/profile', async (req, res) => {
   try {
     const result = await query(`
       SELECT id, username, email, name, summary, socials, profile_image_path, created_at, updated_at

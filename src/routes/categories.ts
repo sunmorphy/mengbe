@@ -4,7 +4,7 @@ import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const userId = req.user?.userId;
     const result = await query(`SELECT * FROM categories WHERE user_id = $1 ORDER BY created_at DESC`, [userId]);
