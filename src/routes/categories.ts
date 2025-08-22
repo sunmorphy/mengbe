@@ -4,7 +4,29 @@ import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
+// Get all categories (public, no auth required)
 router.get('/', async (req, res) => {
+  try {
+    const result = await query(`SELECT * FROM categories ORDER BY created_at DESC`);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch categories' });
+  }
+});
+
+// Get categories by user ID (public, no auth required)
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const result = await query(`SELECT * FROM categories WHERE user_id = $1 ORDER BY created_at DESC`, [parseInt(userId)]);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch user categories' });
+  }
+});
+
+// Get current user's categories (requires authentication)
+router.get('/my', authenticateToken, async (req, res) => {
   try {
     const userId = req.user?.userId;
     const result = await query(`SELECT * FROM categories WHERE user_id = $1 ORDER BY created_at DESC`, [userId]);

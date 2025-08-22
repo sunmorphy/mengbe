@@ -6,9 +6,9 @@ import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
+// Get all artworks (public, no auth required)
 router.get('/', async (req, res) => {
   try {
-    const userId = req.user?.userId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 25;
     const search = req.query.search as string || '';
@@ -16,9 +16,9 @@ router.get('/', async (req, res) => {
     
     const offset = (page - 1) * limit;
     
-    let whereConditions = ['a.user_id = $1'];
-    let queryParams: any[] = [userId];
-    let paramIndex = 2;
+    let whereConditions: string[] = [];
+    let queryParams: any[] = [];
+    let paramIndex = 1;
     
     // Add search condition
     if (search.trim()) {
@@ -45,7 +45,7 @@ router.get('/', async (req, res) => {
       }
     }
     
-    const whereClause = whereConditions.join(' AND ');
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
     
     // Get total count for pagination
     const countResult = await query(`
@@ -53,7 +53,7 @@ router.get('/', async (req, res) => {
       FROM artworks a
       LEFT JOIN artwork_categories ac ON a.id = ac.artwork_id
       LEFT JOIN categories c ON ac.category_id = c.id
-      WHERE ${whereClause}
+      ${whereClause}
     `, queryParams);
     
     const total = parseInt(countResult.rows[0].total);
@@ -86,7 +86,7 @@ router.get('/', async (req, res) => {
       FROM artworks a
       LEFT JOIN artwork_categories ac ON a.id = ac.artwork_id
       LEFT JOIN categories c ON ac.category_id = c.id
-      WHERE ${whereClause}
+      ${whereClause}
       GROUP BY a.id
       ORDER BY a.created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -108,6 +108,7 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get artworks by user ID (public, no auth required)
 router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -210,6 +211,110 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
+// Get current user's artworks (requires authentication)
+router.get('/my', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 25;
+    const search = req.query.search as string || '';
+    const categoryIds = req.query.categoryIds as string || '';
+    
+    const offset = (page - 1) * limit;
+    
+    let whereConditions = ['a.user_id = $1'];
+    let queryParams: any[] = [userId];
+    let paramIndex = 2;
+    
+    // Add search condition
+    if (search.trim()) {
+      whereConditions.push(`(LOWER(a.title) LIKE $${paramIndex} OR LOWER(a.description) LIKE $${paramIndex})`);
+      queryParams.push(`%${search.toLowerCase()}%`);
+      paramIndex++;
+    }
+    
+    // Add category filter condition
+    if (categoryIds.trim()) {
+      try {
+        const categoryIdArray = JSON.parse(categoryIds);
+        if (Array.isArray(categoryIdArray) && categoryIdArray.length > 0) {
+          const categoryPlaceholders = categoryIdArray.map((_, i) => `$${paramIndex + i}`).join(', ');
+          whereConditions.push(`EXISTS (
+            SELECT 1 FROM artwork_categories ac2 
+            WHERE ac2.artwork_id = a.id AND ac2.category_id IN (${categoryPlaceholders})
+          )`);
+          queryParams.push(...categoryIdArray);
+          paramIndex += categoryIdArray.length;
+        }
+      } catch (error) {
+        // Ignore invalid JSON
+      }
+    }
+    
+    const whereClause = whereConditions.join(' AND ');
+    
+    // Get total count for pagination
+    const countResult = await query(`
+      SELECT COUNT(DISTINCT a.id) as total
+      FROM artworks a
+      LEFT JOIN artwork_categories ac ON a.id = ac.artwork_id
+      LEFT JOIN categories c ON ac.category_id = c.id
+      WHERE ${whereClause}
+    `, queryParams);
+    
+    const total = parseInt(countResult.rows[0].total);
+    const totalPages = Math.ceil(total / limit);
+    
+    // Get paginated results
+    const result = await query(`
+      SELECT 
+        a.id,
+        a.image_path,
+        a.title,
+        a.description,
+        a.user_id,
+        a.created_at,
+        a.updated_at,
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'category', JSON_BUILD_OBJECT(
+                'id', c.id,
+                'name', c.name,
+                'user_id', c.user_id,
+                'created_at', c.created_at,
+                'updated_at', c.updated_at
+              )
+            )
+          ) FILTER (WHERE c.id IS NOT NULL), 
+          '[]'
+        ) as artwork_categories
+      FROM artworks a
+      LEFT JOIN artwork_categories ac ON a.id = ac.artwork_id
+      LEFT JOIN categories c ON ac.category_id = c.id
+      WHERE ${whereClause}
+      GROUP BY a.id
+      ORDER BY a.created_at DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `, [...queryParams, limit, offset]);
+    
+    res.json({
+      data: result.rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch artworks' });
+  }
+});
+
+// Get single artwork (public, no auth required)
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;

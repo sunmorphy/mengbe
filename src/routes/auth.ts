@@ -76,15 +76,14 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Get user profile by ID (public)
-router.get('/profile/:userId', async (req, res) => {
+// Get current user profile
+router.get('/profile', authenticateToken, async (req, res) => {
   try {
-    const { userId } = req.params;
     const result = await query(`
-      SELECT id, username, name, summary, socials, profile_image_path, created_at, updated_at
+      SELECT id, username, email, name, summary, socials, profile_image_path, created_at, updated_at
       FROM users 
       WHERE id = $1
-    `, [parseInt(userId)]);
+    `, [req.user!.userId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -97,14 +96,14 @@ router.get('/profile/:userId', async (req, res) => {
   }
 });
 
-// Get current user profile
-router.get('/profile', async (req, res) => {
+// Get user profile by id
+router.get('/profile/:userId', async (req, res) => {
   try {
     const result = await query(`
       SELECT id, username, email, name, summary, socials, profile_image_path, created_at, updated_at
       FROM users 
       WHERE id = $1
-    `, [req.user!.userId]);
+    `, [req.params.userId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
