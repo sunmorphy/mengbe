@@ -13,6 +13,7 @@ router.get('/', async (req, res) => {
     const limit = parseInt(req.query.limit as string) || 25;
     const search = req.query.search as string || '';
     const categoryIds = req.query.categoryIds as string || '';
+    const type = req.query.type as string || '';
     
     const offset = (page - 1) * limit;
     
@@ -24,6 +25,13 @@ router.get('/', async (req, res) => {
     if (search.trim()) {
       whereConditions.push(`(LOWER(a.title) LIKE $${paramIndex} OR LOWER(a.description) LIKE $${paramIndex})`);
       queryParams.push(`%${search.toLowerCase()}%`);
+      paramIndex++;
+    }
+    
+    // Add type filter condition
+    if (type.trim() && (type === 'portfolio' || type === 'scratch')) {
+      whereConditions.push(`a.type = $${paramIndex}`);
+      queryParams.push(type);
       paramIndex++;
     }
     
@@ -66,6 +74,7 @@ router.get('/', async (req, res) => {
         a.image_path,
         a.title,
         a.description,
+        a.type,
         a.user_id,
         a.created_at,
         a.updated_at,
@@ -116,6 +125,7 @@ router.get('/user/:userId', async (req, res) => {
     const limit = parseInt(req.query.limit as string) || 25;
     const search = req.query.search as string || '';
     const categoryIds = req.query.categoryIds as string || '';
+    const type = req.query.type as string || '';
     
     const offset = (page - 1) * limit;
     
@@ -127,6 +137,13 @@ router.get('/user/:userId', async (req, res) => {
     if (search.trim()) {
       whereConditions.push(`(LOWER(a.title) LIKE $${paramIndex} OR LOWER(a.description) LIKE $${paramIndex})`);
       queryParams.push(`%${search.toLowerCase()}%`);
+      paramIndex++;
+    }
+    
+    // Add type filter condition
+    if (type.trim() && (type === 'portfolio' || type === 'scratch')) {
+      whereConditions.push(`a.type = $${paramIndex}`);
+      queryParams.push(type);
       paramIndex++;
     }
     
@@ -169,6 +186,7 @@ router.get('/user/:userId', async (req, res) => {
         a.image_path,
         a.title,
         a.description,
+        a.type,
         a.user_id,
         a.created_at,
         a.updated_at,
@@ -219,6 +237,7 @@ router.get('/my', authenticateToken, async (req, res) => {
     const limit = parseInt(req.query.limit as string) || 25;
     const search = req.query.search as string || '';
     const categoryIds = req.query.categoryIds as string || '';
+    const type = req.query.type as string || '';
     
     const offset = (page - 1) * limit;
     
@@ -230,6 +249,13 @@ router.get('/my', authenticateToken, async (req, res) => {
     if (search.trim()) {
       whereConditions.push(`(LOWER(a.title) LIKE $${paramIndex} OR LOWER(a.description) LIKE $${paramIndex})`);
       queryParams.push(`%${search.toLowerCase()}%`);
+      paramIndex++;
+    }
+    
+    // Add type filter condition
+    if (type.trim() && (type === 'portfolio' || type === 'scratch')) {
+      whereConditions.push(`a.type = $${paramIndex}`);
+      queryParams.push(type);
       paramIndex++;
     }
     
@@ -272,6 +298,7 @@ router.get('/my', authenticateToken, async (req, res) => {
         a.image_path,
         a.title,
         a.description,
+        a.type,
         a.user_id,
         a.created_at,
         a.updated_at,
@@ -324,6 +351,7 @@ router.get('/:id', async (req, res) => {
         a.image_path,
         a.title,
         a.description,
+        a.type,
         a.user_id,
         a.created_at,
         a.updated_at,
@@ -362,6 +390,7 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
     // Extract fields from req.body (populated by multer)
     const title = req.body?.title || null;
     const description = req.body?.description || null;
+    const type = req.body?.type || 'portfolio';
     const categoryIds = req.body?.categoryIds || null;
     const file = req.file;
     const userId = req.user?.userId;
@@ -370,14 +399,19 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
       return res.status(400).json({ error: 'Image file is required' });
     }
 
+    // Validate type field
+    if (type && !['portfolio', 'scratch'].includes(type)) {
+      return res.status(400).json({ error: 'Type must be either "portfolio" or "scratch"' });
+    }
+
     const username = req.user?.username!;
     const imageKitResult = await uploadToImageKit(file.buffer, file.originalname, username, 'artworks');
 
     const artworkResult = await query(`
-      INSERT INTO artworks (image_path, title, description, user_id)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO artworks (image_path, title, description, type, user_id)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [imageKitResult.url, title || null, description || null, userId]);
+    `, [imageKitResult.url, title || null, description || null, type, userId]);
 
     const artwork = artworkResult.rows[0];
 
@@ -402,6 +436,7 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
         a.image_path,
         a.title,
         a.description,
+        a.type,
         a.user_id,
         a.created_at,
         a.updated_at,
@@ -440,24 +475,30 @@ router.put('/:id', authenticateToken, upload.single('image'), async (req, res) =
     const { id } = req.params;
     const title = req.body?.title || null;
     const description = req.body?.description || null;
+    const type = req.body?.type;
     const categoryIds = req.body?.categoryIds || null;
     const file = req.file;
     const userId = req.user?.userId;
 
+    // Validate type field if provided
+    if (type && !['portfolio', 'scratch'].includes(type)) {
+      return res.status(400).json({ error: 'Type must be either "portfolio" or "scratch"' });
+    }
+
     let updateQuery = `
       UPDATE artworks 
-      SET title = $2, description = $3, updated_at = NOW()
+      SET title = $2, description = $3, type = $4, updated_at = NOW()
     `;
-    let updateParams = [parseInt(id), title || null, description || null];
+    let updateParams = [parseInt(id), title || null, description || null, type];
 
     if (file) {
       const username = req.user?.username!;
       const imageKitResult = await uploadToImageKit(file.buffer, file.originalname, username, 'artworks');
       updateQuery = `
         UPDATE artworks 
-        SET title = $2, description = $3, image_path = $4, updated_at = NOW()
+        SET title = $2, description = $3, type = $4, image_path = $5, updated_at = NOW()
       `;
-      updateParams = [parseInt(id), title || null, description || null, imageKitResult.url];
+      updateParams = [parseInt(id), title || null, description || null, type, imageKitResult.url];
     }
 
     updateQuery += ` WHERE id = $1 AND user_id = $${updateParams.length + 1} RETURNING *`;
@@ -493,6 +534,7 @@ router.put('/:id', authenticateToken, upload.single('image'), async (req, res) =
         a.image_path,
         a.title,
         a.description,
+        a.type,
         a.user_id,
         a.created_at,
         a.updated_at,

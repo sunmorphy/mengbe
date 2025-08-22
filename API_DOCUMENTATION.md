@@ -176,6 +176,7 @@ Get paginated list of all artworks.
 - `limit`: number (optional, default: 25)
 - `search`: string (optional, searches title and description)
 - `categoryIds`: JSON array string (optional, filters by category IDs)
+- `type`: string (optional, filters by type: "portfolio" or "scratch")
 
 **Response (200):**
 ```json
@@ -186,6 +187,7 @@ Get paginated list of all artworks.
       "image_path": "string",
       "title": "string",
       "description": "string",
+      "type": "portfolio",
       "user_id": 1,
       "created_at": "timestamp",
       "updated_at": "timestamp",
@@ -231,6 +233,7 @@ Get paginated list of artworks for a specific user.
   "image_path": "string",
   "title": "string",
   "description": "string",
+  "type": "portfolio",
   "user_id": 1,
   "created_at": "timestamp",
   "updated_at": "timestamp",
@@ -257,6 +260,7 @@ Content-Type: multipart/form-data
 - `image`: file (Required image file)
 - `title`: string (Optional)
 - `description`: string (Optional)
+- `type`: string (Optional, "portfolio" or "scratch", default: "portfolio")
 - `categoryIds`: string (Optional JSON array string, e.g., "[1,2,3]")
 
 **Response (201):** Same format as Get Single Artwork
@@ -270,6 +274,7 @@ Content-Type: multipart/form-data
 - `image`: file (Optional new image file)
 - `title`: string (Optional)
 - `description`: string (Optional)
+- `type`: string (Optional, "portfolio" or "scratch")
 - `categoryIds`: string (Optional JSON array string)
 
 **Response (200):** Same format as Get Single Artwork
