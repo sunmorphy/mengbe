@@ -22,67 +22,6 @@ const upload = multer({
   }
 });
 
-// Register new user
-router.post('/register', async (req, res) => {
-  try {
-    const { username, email, password, name, summary, socials } = req.body;
-
-    // Validation
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'Username, email, and password are required' });
-    }
-
-    if (!validator.isEmail(email)) {
-      return res.status(400).json({ error: 'Invalid email format' });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
-    }
-
-    if (username.length < 3 || username.length > 50) {
-      return res.status(400).json({ error: 'Username must be between 3 and 50 characters' });
-    }
-
-    // Validate socials array
-    if (socials && !Array.isArray(socials)) {
-      return res.status(400).json({ error: 'Socials must be an array of strings' });
-    }
-
-    // Check if user already exists
-    const existingUser = await query(
-      `SELECT id FROM users WHERE username = $1 OR email = $2`,
-      [username, email]
-    );
-
-    if (existingUser.rows.length > 0) {
-      return res.status(409).json({ error: 'Username or email already exists' });
-    }
-
-    // Hash password
-    const passwordHash = await hashPassword(password);
-
-    // Create user
-    const result = await query(`
-      INSERT INTO users (username, email, password_hash, name, summary, socials)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id, username, email, name, summary, socials, profile_image_path, created_at, updated_at
-    `, [username, email, passwordHash, name || null, summary || null, socials || null]);
-
-    const user = result.rows[0] as UserProfile;
-    const token = generateToken(user);
-
-    res.status(201).json({
-      message: 'User registered successfully',
-      user,
-      token
-    });
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Failed to register user' });
-  }
-});
-
 // Login user
 router.post('/login', async (req, res) => {
   try {
