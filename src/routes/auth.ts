@@ -76,6 +76,27 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Get user profile by ID (public)
+router.get('/profile/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const result = await query(`
+      SELECT id, username, name, summary, socials, profile_image_path, created_at, updated_at
+      FROM users 
+      WHERE id = $1
+    `, [parseInt(userId)]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Profile fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
 // Get current user profile
 router.get('/profile', async (req, res) => {
   try {
