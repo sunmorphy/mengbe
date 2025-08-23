@@ -8,7 +8,7 @@ const router = Router();
 router.get('/', async (req, res) => {
   try {
     const result = await query(`SELECT * FROM categories ORDER BY created_at DESC`);
-    res.json(result.rows);
+    res.status(200).json(result.rows);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch categories' });
   }
@@ -19,7 +19,7 @@ router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const result = await query(`SELECT * FROM categories WHERE user_id = $1 ORDER BY created_at DESC`, [parseInt(userId)]);
-    res.json(result.rows);
+    res.status(200).json(result.rows);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch user categories' });
   }
@@ -30,7 +30,7 @@ router.get('/my', authenticateToken, async (req, res) => {
   try {
     const userId = req.user?.userId;
     const result = await query(`SELECT * FROM categories WHERE user_id = $1 ORDER BY created_at DESC`, [userId]);
-    res.json(result.rows);
+    res.status(200).json(result.rows);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch categories' });
   }
@@ -65,7 +65,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Category not found or unauthorized' });
     }
-    res.json(result.rows[0]);
+    res.status(201).json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update category' });
   }

@@ -65,7 +65,7 @@ router.post('/login', async (req, res) => {
 
     const token = generateToken(userProfile);
 
-    res.json({
+    res.status(200).json({
       message: 'Login successful',
       user: userProfile,
       token
@@ -109,7 +109,7 @@ router.get('/profile/:userId', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json(result.rows[0]);
+    res.status(200).json(result.rows[0]);
   } catch (error) {
     console.error('Profile fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch profile' });
@@ -155,7 +155,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
       RETURNING id, username, email, name, summary, socials, profile_image_path, created_at, updated_at
     `, [userId, email, name, summary, socials]);
 
-    res.json({
+    res.status(201).json({
       message: 'Profile updated successfully',
       user: result.rows[0]
     });
@@ -202,7 +202,7 @@ router.put('/password', authenticateToken, async (req, res) => {
       WHERE id = $1
     `, [userId, newPasswordHash]);
 
-    res.json({ message: 'Password updated successfully' });
+    res.status(201).json({ message: 'Password updated successfully' });
   } catch (error) {
     console.error('Password change error:', error);
     res.status(500).json({ error: 'Failed to change password' });
@@ -238,7 +238,7 @@ router.post('/profile/image', authenticateToken, upload.single('image'), async (
       RETURNING id, username, email, name, summary, socials, profile_image_path, created_at, updated_at
     `, [userId, uploadResult.filePath]);
 
-    res.json({
+    res.status(201).json({
       message: 'Profile image uploaded successfully',
       user: result.rows[0],
       imageUrl: uploadResult.url

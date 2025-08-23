@@ -101,7 +101,7 @@ router.get('/', async (req, res) => {
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `, [...queryParams, limit, offset]);
     
-    res.json({
+    res.status(200).json({
       data: result.rows,
       pagination: {
         page,
@@ -213,7 +213,7 @@ router.get('/user/:userId', async (req, res) => {
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `, [...queryParams, limit, offset]);
     
-    res.json({
+    res.status(200).json({
       data: result.rows,
       pagination: {
         page,
@@ -325,7 +325,7 @@ router.get('/my', authenticateToken, async (req, res) => {
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `, [...queryParams, limit, offset]);
     
-    res.json({
+    res.status(200).json({
       data: result.rows,
       pagination: {
         page,
@@ -379,7 +379,7 @@ router.get('/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Artwork not found' });
     }
-    res.json(result.rows[0]);
+    res.status(200).json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch artwork' });
   }
@@ -559,7 +559,7 @@ router.put('/:id', authenticateToken, upload.single('image'), async (req, res) =
       GROUP BY a.id
     `, [parseInt(id)]);
 
-    res.json(result.rows[0]);
+    res.status(201).json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update artwork' });
   }
